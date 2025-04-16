@@ -198,10 +198,10 @@ export class RealtimeClient extends RealtimeEventHandler {
         prefix_padding_ms: number;
         silence_duration_ms: number;
     };
-    defaultSemanticVadConfig: {
-        type: 'semantic_vad';
-        eagerness: 'low';
-    };
+    defaultSemanticVadConfig = {
+        type: 'semantic_vad',
+        eagerness: 'low',
+    }
     realtime: RealtimeAPI;
     conversation: RealtimeConversation;
     /**
