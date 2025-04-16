@@ -1,9 +1,10 @@
 /**
  * Valid audio formats
- * @typedef {"pcm16"|"g711_ulaw"|"g711_alaw"} AudioFormatType
+ * @typedef {"pcm16"|"g711-ulaw"|"g711-alaw"} AudioFormatType
  */
 /**
  * @typedef {Object} AudioTranscriptionType
+ * @property {boolean} [enabled]
  * @property {"whisper-1"} model
  */
 /**
@@ -12,6 +13,11 @@
  * @property {number} [threshold]
  * @property {number} [prefix_padding_ms]
  * @property {number} [silence_duration_ms]
+ */
+/**
+ * @typedef {Object} TurnDetectionSemanticVadType
+ * @property {"semantic_vad"} type
+ * @property {"low"|"medium"|"high"|"auto"} [eagerness]
  */
 /**
  * Tool definitions
@@ -26,11 +32,11 @@
  * @property {string} [model]
  * @property {string[]} [modalities]
  * @property {string} [instructions]
- * @property {"alloy"|"ash"|"ballad"|"coral"|"echo"|"sage"|"shimmer"|"verse"} [voice]
+ * @property {"alloy"|"shimmer"|"echo"} [voice]
  * @property {AudioFormatType} [input_audio_format]
  * @property {AudioFormatType} [output_audio_format]
  * @property {AudioTranscriptionType|null} [input_audio_transcription]
- * @property {TurnDetectionServerVadType|null} [turn_detection]
+ * @property {TurnDetectionServerVadType|TurnDetectionSemanticVadType|null} [turn_detection]
  * @property {ToolDefinitionType[]} [tools]
  * @property {"auto"|"none"|"required"|{type:"function",name:string}} [tool_choice]
  * @property {number} [temperature]
@@ -74,7 +80,7 @@
  * @property {string|null} [previous_item_id]
  * @property {"message"} type
  * @property {ItemStatusType} status
- * @property {"user"} role
+ * @property {"system"} role
  * @property {Array<InputTextContentType|InputAudioContentType>} content
  */
 /**
@@ -180,6 +186,7 @@ export class RealtimeClient extends RealtimeEventHandler {
         tool_choice: string;
         temperature: number;
         max_response_output_tokens: number;
+        model: 'gpt-4o-mini-realtime-preview-2024-12-17';
     };
     sessionConfig: {};
     transcriptionModels: {
@@ -190,6 +197,10 @@ export class RealtimeClient extends RealtimeEventHandler {
         threshold: number;
         prefix_padding_ms: number;
         silence_duration_ms: number;
+    };
+    defaultSemanticVadConfig: {
+        type: 'semantic_vad';
+        eagerness: 'low';
     };
     realtime: RealtimeAPI;
     conversation: RealtimeConversation;
@@ -235,9 +246,9 @@ export class RealtimeClient extends RealtimeEventHandler {
     disconnect(): void;
     /**
      * Gets the active turn detection mode
-     * @returns {"server_vad"|null}
+     * @returns {"server_vad"|"semantic_vad"|null}
      */
-    getTurnDetectionType(): "server_vad" | null;
+    getTurnDetectionType(): "server_vad" | "semantic_vad" | null;
     /**
      * Add a tool and handler
      * @param {ToolDefinitionType} definition
@@ -265,7 +276,22 @@ export class RealtimeClient extends RealtimeEventHandler {
      * If the client is not yet connected, will save details and instantiate upon connection
      * @param {SessionResourceType} [sessionConfig]
      */
-    updateSession({ modalities, instructions, voice, input_audio_format, output_audio_format, input_audio_transcription, turn_detection, tools, tool_choice, temperature, max_response_output_tokens, }?: SessionResourceType): boolean;
+    updateSession({
+        modalities,
+        instructions,
+        voice,
+        model,
+        input_audio_format,
+        output_audio_format,
+        input_audio_transcription,
+        input_audio_noise_reduction,
+        turn_detection,
+        tools,
+        tool_choice,
+        temperature,
+        max_response_output_tokens,
+      }?: SessionResourceType): boolean;
+      
     /**
      * Sends user message content and generates a response
      * @param {Array<InputTextContentType|InputAudioContentType>} content
@@ -311,16 +337,23 @@ export class RealtimeClient extends RealtimeEventHandler {
 /**
  * Valid audio formats
  */
-export type AudioFormatType = "pcm16" | "g711_ulaw" | "g711_alaw";
+export type AudioFormatType = "pcm16" | "g711-ulaw" | "g711-alaw";
 export type AudioTranscriptionType = {
+    enabled?: boolean;
     model: "whisper-1";
 };
-export type TurnDetectionServerVadType = {
-    type: "server_vad";
-    threshold?: number;
-    prefix_padding_ms?: number;
-    silence_duration_ms?: number;
-};
+export type TurnDetectionType =
+  | {
+      type: "server_vad";
+      threshold?: number;
+      prefix_padding_ms?: number;
+      silence_duration_ms?: number;
+    }
+  | {
+      type: "semantic_vad";
+      eagerness: "low";
+    };
+
 /**
  * Tool definitions
  */
@@ -336,25 +369,30 @@ export type SessionResourceType = {
     model?: string;
     modalities?: string[];
     instructions?: string;
-    voice?: "alloy"|"ash"|"ballad"|"coral"|"echo"|"sage"|"shimmer"|"verse";
-
+    voice?: "alloy" | "shimmer" | "echo" | "nova" | "onyx" | "coral" | "sage" | "ash" | "ballad" | "verse" | "fable";
     input_audio_format?: AudioFormatType;
     output_audio_format?: AudioFormatType;
+    input_audio_noise_reduction?: InputAudioNoiseReductionType | null;
     input_audio_transcription?: AudioTranscriptionType | null;
-    turn_detection?: TurnDetectionServerVadType | null;
+    turn_detection?: TurnDetectionType | null;
     tools?: ToolDefinitionType[];
     tool_choice?: "auto" | "none" | "required" | {
-        type: "function";
-        name: string;
+      type: "function";
+      name: string;
     };
     temperature?: number;
     max_response_output_tokens?: number | "inf";
-};
+  };
+  
 export type ItemStatusType = "in_progress" | "completed" | "incomplete";
 export type InputTextContentType = {
     type: "input_text";
     text: string;
 };
+type InputAudioNoiseReductionType = {
+    type: "near_field" | "far_field";
+  };
+  
 export type InputAudioContentType = {
     type: "input_audio";
     /**
@@ -386,7 +424,7 @@ export type UserItemType = {
     previous_item_id?: string | null;
     type: "message";
     status: ItemStatusType;
-    role: "user";
+    role: "system";
     content: Array<InputTextContentType | InputAudioContentType>;
 };
 export type AssistantItemType = {
