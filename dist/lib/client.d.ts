@@ -6,6 +6,7 @@
  * @typedef {Object} AudioTranscriptionType
  * @property {boolean} [enabled]
  * @property {"whisper-1"} model
+ * @property {string} [language]
  */
 /**
  * @typedef {Object} TurnDetectionServerVadType
@@ -13,11 +14,15 @@
  * @property {number} [threshold]
  * @property {number} [prefix_padding_ms]
  * @property {number} [silence_duration_ms]
+ * @property {boolean} [create_response]
+ * @property {boolean} [interrupt_response]
  */
 /**
  * @typedef {Object} TurnDetectionSemanticVadType
  * @property {"semantic_vad"} type
  * @property {"low"|"medium"|"high"|"auto"} [eagerness]
+ * @property {boolean} [create_response]
+ * @property {boolean} [interrupt_response]
  */
 /**
  * Tool definitions
@@ -197,11 +202,12 @@ export class RealtimeClient extends RealtimeEventHandler {
         threshold: number;
         prefix_padding_ms: number;
         silence_duration_ms: number;
+
     };
-    defaultSemanticVadConfig = {
-        type: 'semantic_vad',
-        eagerness: 'low',
-    }
+    defaultSemanticVadConfig: {
+        type: 'semantic_vad';
+        eagerness: 'low';
+    };
     realtime: RealtimeAPI;
     conversation: RealtimeConversation;
     /**
