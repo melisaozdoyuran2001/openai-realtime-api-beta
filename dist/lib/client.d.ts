@@ -347,16 +347,20 @@ export type AudioFormatType = "pcm16" | "g711-ulaw" | "g711-alaw";
 export type AudioTranscriptionType = {
     enabled?: boolean;
     model: "whisper-1";
+    language?: string;
 };
 export type TurnDetectionType =
   | {
       type: "server_vad";
       threshold?: number;
       prefix_padding_ms?: number;
+      
       silence_duration_ms?: number;
     }
   | {
       type: "semantic_vad";
+      create_response: true, // only in conversation mode
+      interrupt_response: true, // only in conversation mode
       eagerness: "low";
     };
 
@@ -502,3 +506,4 @@ import { RealtimeEventHandler } from './event_handler.js';
 import { RealtimeAPI } from './api.js';
 import { RealtimeConversation } from './conversation.js';
 //# sourceMappingURL=client.d.ts.map
+
